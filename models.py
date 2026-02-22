@@ -1,6 +1,27 @@
 from datetime import datetime
-from typing import Optional, List
+from typing import Optional, List, Dict
 from dataclasses import dataclass, field
+import enum
+
+class UserRole(enum.Enum):
+    NORMAL = "normal"
+    PREMIUM = "premium"
+    ADMIN = "admin"
+    OWNER = "owner"
+    SUPER_ADMIN = "super_admin"
+
+class AccountStatus(enum.Enum):
+    ACTIVE = "active"
+    INACTIVE = "inactive"
+    SUSPENDED = "suspended"
+    BANNED = "banned"
+
+class ReportStatus(enum.Enum):
+    PENDING = "pending"
+    REVIEWED = "reviewed"
+    RESOLVED = "resolved"
+    REJECTED = "rejected"
+    PROCESSING = "processing"
 
 @dataclass
 class User:
@@ -8,37 +29,67 @@ class User:
     username: Optional[str]
     first_name: str
     last_name: Optional[str] = None
+    role: UserRole = UserRole.NORMAL
     tokens: int = 0
     total_reports: int = 0
     joined_date: datetime = field(default_factory=datetime.now)
-    last_report_date: Optional[datetime] = None
+    last_active: datetime = field(default_factory=datetime.now)
     is_blocked: bool = False
+    language: str = "en"
+    referred_by: Optional[int] = None
     
+@dataclass
+class TelegramAccount:
+    account_id: str
+    user_id: int  # Owner of this account in our bot
+    phone_number: str
+    session_string: str  # Encrypted session
+    account_name: str
+    status: AccountStatus = AccountStatus.ACTIVE
+    added_date: datetime = field(default_factory=datetime.now)
+    last_used: Optional[datetime] = None
+    total_reports_used: int = 0
+    is_primary: bool = False
+    twofa_password: Optional[str] = None  # Encrypted
+
+@dataclass
+class ActiveSession:
+    session_id: str
+    user_id: int
+    account_id: str
+    login_time: datetime = field(default_factory=datetime.now)
+    last_activity: datetime = field(default_factory=datetime.now)
+    expires_at: datetime
+
 @dataclass
 class Transaction:
     transaction_id: str
     user_id: int
     amount: float
-    currency: str  # 'STARS' or 'INR'
+    currency: str
     tokens_purchased: int
-    payment_method: str  # 'stars' or 'upi'
-    status: str  # 'pending', 'completed', 'failed'
+    payment_method: str
+    status: str
     created_at: datetime = field(default_factory=datetime.now)
     completed_at: Optional[datetime] = None
+    payment_details: Dict = field(default_factory=dict)
 
 @dataclass
 class Report:
     report_id: str
     user_id: int
-    report_type: str  # 'user', 'group', 'channel'
-    target: str  # username or link
+    account_id: str  # Which account was used to report
+    report_type: str
+    target: str
     reason: str
     details: str
-    status: str  # 'pending', 'reviewed', 'resolved', 'rejected'
+    status: ReportStatus = ReportStatus.PENDING
     created_at: datetime = field(default_factory=datetime.now)
     reviewed_by: Optional[int] = None
     reviewed_at: Optional[datetime] = None
     tokens_used: int = 1
+    result: Optional[str] = None
+    evidence: List[str] = field(default_factory=list)
 
 @dataclass
 class TokenPackage:
@@ -48,3 +99,13 @@ class TokenPackage:
     price_stars: int
     price_inr: int
     is_active: bool = True
+    description: str = ""
+
+@dataclass
+class ReportTemplate:
+    template_id: str
+    name: str
+    category: str
+    content: str
+    created_by: int
+    is_public: bool = False
